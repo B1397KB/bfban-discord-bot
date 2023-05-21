@@ -1,7 +1,13 @@
-import discord
-from discord.ext import commands
-import requests
 from urllib.parse import quote
+import cairosvg
+from PIL import Image
+from io import BytesIO
+import discord
+import requests
+from discord.ext import commands
+
+from function import convert_time_to_hours, get_bfv_stats, generate_bfban_link, get_ban_status
+
 # from translations import translations
 
 intents = discord.Intents.default()
@@ -13,57 +19,12 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 
 access_token = "{{access_token}}"  # 请将{{access_token}}替换为实际的访问令牌
 
-def get_ban_status(names):
-    url = f'https://api.gametools.network/bfban/checkban?names={names}'
-    response = requests.get(url)
-    data = response.json()
-    return data
-
-
-def generate_bfban_link(origin_persona_id):
-    return f'https://bfban.com/player/{origin_persona_id}'
-
-
-def get_bfv_stats(name):
-    url = f'https://api.gametools.network/bfv/stats/?format_values=true&name={name}&platform=pc&lang=zh-cn'
-    response = requests.get(url)
-    data = response.json()
-    return data
-
-
-def convert_time_to_hours(time_string):
-    # 移除字符串中的空格
-    time_string = time_string.replace(" ", "")
-
-    # 分割时间字符串
-    days, time = time_string.split('days,')
-
-    # 提取小时、分钟和秒数部分
-    hours, minutes, seconds = map(int, time.split(':'))
-
-    # 计算总小时数
-    total_hours = int(days) * 24 + hours + minutes / 60 + seconds / 3600
-    return total_hours
-
 @bot.event
 async def on_ready():
     print(f'Logged in as {bot.user.name}')
 
 @bot.command()
 async def bothelp(ctx):
-    # 获取当前语言设置（假设为变量 language）
-    # language = 'zh-cn'  # 假设为中文
-    # 获取对应语言的翻译
-    # translation = translations.get(language)
-    # 检查是否存在对应语言的翻译
-    # if translation:
-    #     embed = discord.Embed(title=translation['title'], description=translation['description'],color=discord.Color.gold())
-    #     embed.add_field(name=translation['check_ban'], value="检查玩家封禁状态", inline=False)
-    #     embed.add_field(name=translation['report_player'], value="举报玩家", inline=False)
-    #     embed.add_field(name=translation['get_player_stats'], value="查询玩家生涯信息", inline=False)
-    #     await ctx.send(embed=embed)
-    # else:
-    #     await ctx.send("Translation not available for the selected language.")
     embed = discord.Embed(title="指令列表", description="下面是可用的指令列表：", color=discord.Color.gold())
     embed.add_field(name="!checkBan <names>", value="检查玩家封禁状态", inline=False)
     embed.add_field(name="!report", value="举报玩家", inline=False)
@@ -127,7 +88,7 @@ async def getPlayerAll(ctx, player_name):
             killsPerMinute = weapon.get('killsPerMinute', '')
             headshots = weapon.get('headshots', '')
             hitVKills = weapon.get('hitVKills', '')
-            weapon_info = f"**{name}** 类型:{weapontype}\n击杀数:{kills}   KPM:{killsPerMinute}\n命中率：{accuracy}   爆头率:{headshots}   效率:{hitVKills}\n"
+            weapon_info = f"**{name}** 类型:{weapontype}\n击杀数:{kills}  KPM:{killsPerMinute}\n命中率：{accuracy}  爆头率:{headshots}   效率:{hitVKills}\n\n"
             weapons_info += weapon_info
 
         # 编译vehicles字段
@@ -137,10 +98,10 @@ async def getPlayerAll(ctx, player_name):
 
         for vehicle in vehicles[:10]:  # 只输出前十个载具
             name = vehicle.get('vehicleName', '')
-            vehicletype = weapon.get('type', '')
+            vehicletype = vehicle.get('type', '')
             kills = vehicle.get('kills', '')
             killsPerMinute = vehicle.get('killsPerMinute', '')
-            vehicle_info = f"**{name}** 类型:{vehicletype}\n击杀数:{kills}   KPM:{killsPerMinute}\n"
+            vehicle_info = f"**{name}** 类型:{vehicletype}\n击杀数:{kills}   KPM:{killsPerMinute}\n\n"
             vehicles_info += vehicle_info
 
         # 编译platoons字段
@@ -170,7 +131,7 @@ async def getPlayerAll(ctx, player_name):
         await ctx.send(embed=embed2)
         # 发送platoons信息
         embed3 = discord.Embed(title="团队信息", color=discord.Color.blue())
-        embed3.add_field(name="团队信息", value=platoon_info, inline=False)
+        embed3.add_field(name="团队信息", value=platoons_info, inline=False)
         await ctx.send(embed=embed3)
 
 
@@ -205,7 +166,6 @@ async def checkBan(ctx, names):
                 status = "刷枪"
             if status == 3:
                 status = "MOSS自证"
-
 
             # 创建富文本消息
             embed.add_field(name='URL', value=bfban_link)
@@ -283,6 +243,7 @@ async def report(ctx):
         await ctx.send("请输入举报描述：")
         description_message = await bot.wait_for('message', check=lambda message: message.author == ctx.author)
         description = description_message.content
+        print(description)
 
         # Obtain the captcha from the API
         captcha_url = "https://bfban.gametools.network/api/captcha"
@@ -292,9 +253,12 @@ async def report(ctx):
         if captcha_data.get('success') == 1:
             hash_value = captcha_data['data']['hash']
             svg_content = captcha_data['data']['content']
-
+            png_data = cairosvg.svg2png(bytestring=svg_content.encode('utf-8'))
+            image = Image.open(BytesIO(png_data))
+            image_path = "captcha.png"
+            image.save(image_path)
             await ctx.send("以下是验证码图片：")
-            await ctx.send(svg_content)
+            await ctx.send(file=discord.File(image_path))
 
             await ctx.send("请输入验证码：")
             captcha_message = await bot.wait_for('message', check=lambda message: message.author == ctx.author)
@@ -314,25 +278,43 @@ async def report(ctx):
                 "captcha": captcha
             }
 
-            # Send the report request
-            headers = {
-                "x-access-token": access_token
+            # Sign in to obtain the token
+            signin_url = "https://bfban.gametools.network/api/user/signin"
+            signin_payload = {
+                "data": {
+                    "username": "username",
+                    "password": "password",
+                    "EXPIRES_IN": 86400000  # 24 hours expiration time
+                },
+                "encryptCaptcha": hash_value,
+                "captcha": captcha
             }
-            report_response = requests.post(report_url, json=payload, headers=headers)
-            report_data = report_response.json()
+            signin_response = requests.post(signin_url, json=signin_payload)
+            signin_data = signin_response.json()
 
-            if report_data.get('success') == 1:
-                await ctx.send("举报成功！")
-                await ctx.send(f"举报人：{ctx.author.name}")
-                await ctx.send(f"举报的玩家：{originName}")
-                await ctx.send(f"举报描述：{description}")
+            if signin_data.get('success') == 1:
+                token = signin_data['data']['token']
+                headers = {
+                    "x-access-token": token
+                }
+
+                # Send the report request with the token in the headers
+                report_response = requests.post(report_url, json=payload, headers=headers)
+                report_data = report_response.json()
+
+                if report_data.get('success') == 1:
+                    await ctx.send("举报成功！")
+                    await ctx.send(f"案件页面链接：{ctx.author.name}")
+                else:
+                    await ctx.send(f"举报失败：{report_data.get('message')}")
             else:
-                await ctx.send(f"举报失败：{report_data.get('message')}")
+                await ctx.send("登录失败，无法获取令牌。")
         else:
             await ctx.send("获取验证码失败。")
 
     except Exception as e:
         await ctx.send(f"举报过程中出现错误：{str(e)}")
+
 
 @bot.command()
 async def getPlayerStats(ctx, names):
