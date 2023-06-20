@@ -394,4 +394,4 @@ async def getPlayerStats(ctx, names):
 
 
 # 运行机器人
-bot.run('MTEwOTEzMjE2NjEzNjM0MDU4MA.GXFNgo.F6dXYjZbqH5FGAdikdCKfbh0O9dgL97i503Xgw')
+bot.run('Your Token')
