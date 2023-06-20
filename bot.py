@@ -398,6 +398,6 @@ async def getPlayerStats(ctx, names):
     except Exception as e:
         await ctx.send(f'获取玩家生涯信息时发生错误：{e}')
 
-
+discord_token = read_config().get('bfban_account_password')
 # 运行机器人
-bot.run('Your Token')
+bot.run(discord_token)
