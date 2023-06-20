@@ -1,10 +1,8 @@
 from urllib.parse import quote
-import cairosvg
-from PIL import Image
-from io import BytesIO
 import discord
 import requests
 from discord.ext import commands
+import svg
 
 from function import convert_time_to_hours, get_bfv_stats, generate_bfban_link, get_ban_status
 
@@ -17,26 +15,73 @@ intents.presences = False
 
 bot = commands.Bot(command_prefix='!', intents=intents)
 
-access_token = "{{access_token}}"  # 请将{{access_token}}替换为实际的访问令牌
 
+# 在机器人启动时获取 token
 @bot.event
 async def on_ready():
-    print(f'Logged in as {bot.user.name}')
+    print(f'Bot is ready. Connected as {bot.user}')
+
 
 @bot.command()
-async def bothelp(ctx):
+async def helps(ctx):
     embed = discord.Embed(title="指令列表", description="下面是可用的指令列表：", color=discord.Color.gold())
     embed.add_field(name="!checkBan <names>", value="检查玩家封禁状态", inline=False)
     embed.add_field(name="!report", value="举报玩家", inline=False)
     embed.add_field(name="!getPlayerStats <names>", value="查询玩家简易生涯信息", inline=False)
     embed.add_field(name="!getPlayerAll <names>", value="查询玩家全部生涯信息", inline=False)
     await ctx.send(embed=embed)
-    embed2 = discord.Embed(title="command list", description="Below is the list of available commands：", color=discord.Color.gold())
+    embed2 = discord.Embed(title="command list", description="Below is the list of available commands：",
+                           color=discord.Color.gold())
     embed2.add_field(name="!checkBan <names>", value="Check player ban status", inline=False)
     embed2.add_field(name="!report", value="report player", inline=False)
     embed2.add_field(name="!getPlayerStats <names>", value="Query player simple career information", inline=False)
     embed2.add_field(name="!getPlayerAll <names>", value="Query player all career information", inline=False)
     await ctx.send(embed=embed2)
+
+
+@bot.command()
+async def login(ctx):
+    # 获取 token
+    signin_url = "https://bfban.gametools.network/api/user/signin"
+    get_captcha_url = "https://bfban.gametools.network/api/captcha"
+    captcha_response = requests.get(get_captcha_url)
+    captcha_data = captcha_response['data']
+    captcha_hash_value = captcha_data['hash']
+    content = captcha_response['content']
+    pic = svg.str_svg_2_png(content)
+
+    # 发送并验证登录
+    if captcha_response:
+        await ctx.send(pic)
+        captcha_message = await bot.wait_for('message', check=lambda message: message.author == ctx.author)
+        captcha_value = captcha_message.content
+
+        # 替换为实际的用户名和密码
+        username = "DiscordBot"
+        password = "discor"
+
+        payload = {
+            "data": {
+                "username": username,
+                "password": password,
+                "EXPIRES_IN": 1209600000  # 可选项，过期时间（以毫秒为单位），只在 bot/dev 帐户中有效
+            },
+            "encryptCaptcha": captcha_hash_value,
+            "captcha": captcha_value
+        }
+
+        response = requests.post(signin_url, json=payload)
+
+        if response.status_code == 200:
+            signin_data = response.json()
+            if signin_data.get('success') == 1:
+                token = signin_data['data']['token']
+                print("Token obtained successfully:", token)
+            else:
+                print("Failed to obtain token:", signin_data.get('message'))
+        else:
+            print("Signin request failed with status code:", response.status_code)
+
 
 @bot.command()
 async def getPlayerAll(ctx, player_name):
@@ -184,6 +229,7 @@ async def checkBan(ctx, names):
     except Exception as e:
         await ctx.send(f'An error occurred while fetching BFBAN data: {e}')
 
+
 def validate_player_name(name):
     encoded_name = quote(name)
     url = f"https://api.gametools.network/bfv/stats/?format_values=true&name={encoded_name}&platform=pc&lang=zh-cn"
@@ -227,7 +273,8 @@ async def report(ctx):
 
         if 'data' in bfban_cases_data and bfban_cases_data['data']:
             bfban_link = generate_bfban_link(userId)
-            await ctx.send(f"注意：该玩家已经有在 BFBan 中的举报案件记录。\n已有案件的 BFBan 页面链接：{bfban_link}\n是否要继续举报？\n回复 `是` 继续举报，回复 `否` 取消举报。")
+            await ctx.send(
+                f"注意：该玩家已经有在 BFBan 中的举报案件记录。\n已有案件的 BFBan 页面链接：{bfban_link}\n是否要继续举报？\n回复 `是` 继续举报，回复 `否` 取消举报。")
             confirm_message = await bot.wait_for('message', check=lambda message: message.author == ctx.author)
             confirm = confirm_message.content.lower()
 
@@ -252,17 +299,11 @@ async def report(ctx):
 
         if captcha_data.get('success') == 1:
             hash_value = captcha_data['data']['hash']
-            svg_content = captcha_data['data']['content']
-            png_data = cairosvg.svg2png(bytestring=svg_content.encode('utf-8'))
-            image = Image.open(BytesIO(png_data))
-            image_path = "captcha.png"
-            image.save(image_path)
-            await ctx.send("以下是验证码图片：")
-            await ctx.send(file=discord.File(image_path))
+            # svg_content = captcha_data['data']['content']
 
-            await ctx.send("请输入验证码：")
-            captcha_message = await bot.wait_for('message', check=lambda message: message.author == ctx.author)
-            captcha = captcha_message.content
+            # await ctx.send("请输入验证码：")
+            # captcha_message = await bot.wait_for('message', check=lambda message: message.author == ctx.author)
+            # captcha = captcha_message.content
 
             # Prepare the request payload
             report_url = "https://bfban.gametools.network/api/player/report"
@@ -275,7 +316,7 @@ async def report(ctx):
                     "description": description
                 },
                 "encryptCaptcha": hash_value,
-                "captcha": captcha
+                "captcha": " "
             }
 
             # Sign in to obtain the token
@@ -287,7 +328,7 @@ async def report(ctx):
                     "EXPIRES_IN": 86400000  # 24 hours expiration time
                 },
                 "encryptCaptcha": hash_value,
-                "captcha": captcha
+                "captcha": " "
             }
             signin_response = requests.post(signin_url, json=signin_payload)
             signin_data = signin_response.json()
@@ -351,5 +392,6 @@ async def getPlayerStats(ctx, names):
     except Exception as e:
         await ctx.send(f'获取玩家生涯信息时发生错误：{e}')
 
+
 # 运行机器人
-bot.run('Your Discord Bot Token')
+bot.run('MTEwOTEzMjE2NjEzNjM0MDU4MA.GXFNgo.F6dXYjZbqH5FGAdikdCKfbh0O9dgL97i503Xgw')
