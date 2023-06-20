@@ -1,13 +1,13 @@
 from urllib.parse import quote
 import discord
 import requests
+import json
 from discord.ext import commands
 import svg
 
 from function import convert_time_to_hours, get_bfv_stats, generate_bfban_link, get_ban_status
 
 # from translations import translations
-
 intents = discord.Intents.default()
 intents.message_content = True
 intents.typing = False
@@ -15,6 +15,11 @@ intents.presences = False
 
 bot = commands.Bot(command_prefix='!', intents=intents)
 
+# 读取配置文件
+def read_config():
+    with open('config.json', 'r') as f:
+        config = json.load(f)
+    return config
 
 # 在机器人启动时获取 token
 @bot.event
@@ -56,15 +61,16 @@ async def login(ctx):
         captcha_message = await bot.wait_for('message', check=lambda message: message.author == ctx.author)
         captcha_value = captcha_message.content
 
-        # 替换为实际的用户名和密码
-        username = "DiscordBot"
-        password = "discor"
+        # json内替换为实际的用户名和密码
+        configjson = read_config()
+        username = configjson['bfban_account']
+        password = configjson['bfban_account_password']
 
         payload = {
             "data": {
                 "username": username,
                 "password": password,
-                "EXPIRES_IN": 1209600000  # 可选项，过期时间（以毫秒为单位），只在 bot/dev 帐户中有效
+                "EXPIRES_IN": 1209600000  # 可选项，过期时间（以毫秒为单位），只在 bot/dev中有效
             },
             "encryptCaptcha": captcha_hash_value,
             "captcha": captcha_value
