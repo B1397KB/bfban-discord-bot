@@ -1,5 +1,9 @@
 {
     "discordtoken": "",
     "bfban_account": "",
-    "bfban_account_password":""
+    "bfban_account_password":"",
+    "discordsuperID": [
+        ""
+    ],
+    "bfban_token": ""
 }
