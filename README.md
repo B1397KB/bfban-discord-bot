@@ -2,7 +2,31 @@
 [BFBAN Website](https://www.bfban.com)
 
 ----
-BFBAN discord机器人支持bfban的大部分功能，包括但不限于查询玩家bfban状态、查询玩家职业信息、举报玩家、玩家申诉、网站回复消息等。
+BFBAN discord机器人支持查询玩家bfban状态、查询玩家信息、举报玩家、玩家申诉、网站回复消息等。
+
+* 该项目将持续更新
+* 如果你有更好的建议, 可以联系开发者 yueye@bfban.com
+----
+
+### 目前支持的指令为
+
+``!helps``  查询指令列表
+
+``!report`` 举报玩家至bfban
+
+``!banAppeals`` bfban石锤的玩家进行申诉
+
+``!checkBan <name>`` 查询玩家bfban状态
+
+``!getPlayerStats <name>``查询玩家简易生涯信息
+
+``!getPlayerAll`` 查询玩家详细生涯信息
+
+``!sitestats``查询网站统计信息
+
+``!timeLine <name>`` 查询案件时间轴(未实现)
+
+``!login`` 机器人登录bfban,并获取token,token用于举报以及申诉 (config里面机器人超管专属指令)
 
 ----
 
@@ -15,9 +39,31 @@ BFBAN discord机器人支持bfban的大部分功能，包括但不限于查询�
 
 * 注意:以上待实现功能并未考虑实际操作可行性以及实现难度,不代表最终实现结果.
 ----
+The BFBAN discord robot supports querying player bfban status, querying player information, reporting players, player appeals, website reply messages, etc.
 
-### 参与开发
-#### 欢迎随时贡献您的代码,只需提交合并请求即可
+* This project will be continuously updated
+* If you have better suggestions, you can contact the developer yueye@bfban.com
+----
+
+### Currently supported commands are
+
+``!helps`` query command list
+
+``!report`` Report player to bfban
+
+``!banAppeals`` bfban Stonehammer player to appeal
+
+``!checkBan <name>`` Check player bfban status
+
+``!getPlayerStats <name>`` query player's simple career information
+
+``!getPlayerAll`` query player detailed career information
+
+``!sitestats`` query website statistics
+
+``!timeLine <name>`` query case timeline (unimplemented)
+
+``!login`` The robot logs in to bfban and obtains the token, which is used for reporting and appealing (exclusive instructions for robot overrun in config)
 
 ----
 
